@@ -66,6 +66,10 @@ Claude Code 2.1.302, Claude Code's own estimates at API prices.
 
 One thing still reaches the session's model: Claude Code's prompt suggestion, the grey guess for your next prompt, is a background request to it after a turn, and the turn an answer arrives in counts. Turn suggestions off in `/config` (**Prompt suggestions**) or with `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false`, and an aside makes no request to the session's model at all.
 
+## And `/btw`?
+
+Claude Code's own `/btw` asks the session's model over the session's conversation, in one reply with no tools; a question that needs a file read gets "ask in the main conversation". aside asks the model you pick, without the conversation, and the subagent can read and search the repo.
+
 ## How it works
 
 - The prompt goes in as typed. aside answers the turn it starts with "Asked haiku on the side." and no model request.
