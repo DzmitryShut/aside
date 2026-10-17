@@ -114,6 +114,7 @@ describe('aside', () => {
     expect(entered).toEqual([{ text: '$haiku:high what does git reset --soft do?', context: undefined }])
     expect(spawned).toHaveLength(1)
     expect(spawned[0]).toMatchObject({ subagent_type: 'Explore', model: 'haiku', description: 'aside: what does git reset --soft do?' })
+    expect(spawned[0]?.background).not.toBe(false)
     expect(spawned[0]?.name).toMatch(/^aside-haiku-high-[0-9a-z]+$/)
     expect(spawned[0]?.prompt).toMatch(/\n\nwhat does git reset --soft do\?$/)
   })
@@ -269,6 +270,12 @@ describe('aside', () => {
     const asked = await step($, 't1')
     expect(asked.text).toBe('Could not ask claude-nope-9: Agent terminated early due to an API error: model not found')
     expect(logs).toEqual([])
+  })
+
+  test('with nothing drawing the session, the spawn runs in the foreground', async ($, on) => {
+    const { spawned } = engine(on, { isDrawn: false })
+    await submit($, '$haiku what is 6 times 7?')
+    expect(spawned[0]).toMatchObject({ model: 'haiku', background: false })
   })
 
   test('with nothing drawing the session, the question turn waits and carries the answer', async ($, on) => {

@@ -188,10 +188,15 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // The model goes in here, not in the call: the Agent tool's own `model`
-  // takes only the aliases, `agent.spawn` a full id too.
-  on('agent.spawn', ($, e, next) => {
+  // takes only the aliases, `agent.spawn` a full id too. With nothing drawing
+  // the session, the spawn runs in the foreground: it answers with the run's
+  // end, so the question turn has the answer to reply with (a `claude -p` run
+  // does not wait for a later turn).
+  on('agent.spawn', async ($, e, next) => {
     const spec = e.name ? specOf(e.name) : undefined
-    return next(spec ? { ...e, model: spec.model } : e)
+    if (!spec || e.resume) return next(e)
+    const isDrawn = (await $.session.surfaces()).length > 0
+    return next({ ...e, model: spec.model, ...(isDrawn ? {} : { background: false }) })
   }).catch(($, e, next) => (next.called || !specOf(e.name ?? '') ? next(e) : { deny: 'aside could not set its model' }))
 
   on('turn.step', async function* ($, e, next) {
