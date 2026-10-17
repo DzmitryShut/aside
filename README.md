@@ -78,7 +78,7 @@ Claude Code's own `/btw` asks the session's model over the session's conversatio
 - The subagent is `aside:ask`: Read, Glob and Grep, no CLAUDE.md, and nothing of your conversation. On a build without Glob or Grep, the built-in Explore agent stands in. Its line in the main model's agent list says it is aside's and not for the model's own tasks. It stays listed because Claude Code resumes only a listed type, and a follow-up is a resume.
 - Each subagent is named after its spec (`aside-haiku-low-k3f9`). The name sets its model, and its effort on every request it makes.
 - The answer comes back as Claude Code's hand-back, a hidden message the session's model reads in later prompts. aside answers the turn it starts as well, draws the hand-back as the answer, and hides that turn's placeholder reply. ctrl+o shows the raw message.
-- An answer that lands while the session's model is busy with another prompt is read there, with a note to leave it alone. A question typed while the model works gets the same note.
+- An answer that lands while the session's model is busy with another prompt is read there, with a note to leave it alone. A question typed while the model works gets a note too: another model answers it, so the model does not.
 - A subagent that stops without an answer, say on a model id that does not exist, leaves a line in the transcript saying so.
 
 ## Develop
