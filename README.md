@@ -47,7 +47,7 @@ Your question stays in the transcript and the answer shows up under it:
   or combine recent commits without losing any work.
 ```
 
-The session's model reads the answer too, so a later prompt can build on it: "what did haiku say, in five words?" works. The subagent runs in the background, so you can keep typing; `/tasks` lists it while it works.
+The session's model reads the answer too, so a later prompt can build on it: "what did haiku say, in five words?" works. The subagent runs in the background, so you can keep typing; `/tasks` lists it while it works. For a follow-up, open a finished aside in `/tasks` and send it a message: the same subagent answers with what it already knows, and the answer shows up in your chat the same way.
 
 A spec with no model, like `$low go`, is left to [once](https://github.com/DzmitryShut/once), which sets the effort for one prompt. Anything else goes through as typed, so `$HOME is wrong` and `costs $5` are safe.
 
@@ -73,7 +73,7 @@ Claude Code's own `/btw` asks the session's model over the session's conversatio
 ## How it works
 
 - The prompt goes in as typed. aside answers the turn it starts with "Asked haiku on the side." and no model request.
-- The subagent is `aside:ask`: Read, Glob and Grep, no CLAUDE.md, and nothing of your conversation. The main model never sees it in its agent list. On a build without Glob or Grep, the built-in Explore agent stands in.
+- The subagent is `aside:ask`: Read, Glob and Grep, no CLAUDE.md, and nothing of your conversation. On a build without Glob or Grep, the built-in Explore agent stands in. Its line in the main model's agent list says it is aside's and not for the model's own tasks. It stays listed because Claude Code resumes only a listed type, and a follow-up is a resume.
 - Each subagent is named after its spec (`aside-haiku-low-k3f9`). The name sets its model, and its effort on every request it makes.
 - The answer comes back as Claude Code's hand-back, a hidden message the session's model reads in later prompts. aside answers the turn it starts as well, draws the hand-back as the answer, and hides that turn's placeholder reply. ctrl+o shows the raw message.
 - An answer that lands while the session's model is busy with another prompt is read there, with a note to leave it alone. A question typed while the model works gets the same note.
