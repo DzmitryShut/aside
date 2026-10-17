@@ -17,8 +17,10 @@ const handback = (from: string, report: string) =>
 // The engine beneath the plugin: what entered, what was spawned (the Agent
 // tool's call, as the kit runs a spawn), what each model request was sent
 // with, and the messages the next request is built from (a request's, as
-// `$.session.messages({ as: 'api' })` answers them).
-function engine(on: On, options: { tools?: string[]; agents?: AgentInfo[]; spawn?: AgentSpawnResult } = {}) {
+// `$.session.messages({ as: 'api' })` answers them). The agents listed are
+// the ones spawned, `a1` first, unless the test gives its own; the session
+// draws on the terminal unless the test says nothing draws it.
+function engine(on: On, options: { tools?: string[]; agents?: AgentInfo[]; spawn?: AgentSpawnResult; isDrawn?: boolean } = {}) {
   const entered: { text: string; context?: readonly string[] }[] = []
   const spawned: Record<string, unknown>[] = []
   const requests: { turnId: string; effort?: string | number; agentId?: string }[] = []
@@ -35,7 +37,12 @@ function engine(on: On, options: { tools?: string[]; agents?: AgentInfo[]; spawn
     return options.spawn ?? { model: e.model ?? SESSION.model, agentId: `a${spawned.length}` }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('agent.list', () => ({ value: options.agents ?? [] }))
+  on('agent.list', () => ({
+    value:
+      options.agents ??
+      spawned.map((s, i): AgentInfo => ({ id: `a${i + 1}`, description: String(s.description), type: 'aside:ask', status: 'running', name: String(s.name) })),
+  }))
+  on('session.surfaces', () => ({ value: options.isDrawn === false ? [] : ['terminal'] }))
   on('tool.list', () => ({ value: (options.tools ?? []).map(name => ({ name, description: name, mcp: false })) }))
   on('agent.register', ($, e) => ({ value: { agent: `aside:${e.name}` } }))
   on('ui.log', ($, e) => {
@@ -69,8 +76,8 @@ async function step($: Engine, turnId: string, index = 0, agentId?: string) {
   return { chunks, text }
 }
 
-const complete = ($: Engine, turnId: string, agentId?: string, reason: 'answer' | 'error' = 'answer') =>
-  $.turn.complete({ turnId, agentId, answer: '', durationMs: 1, isAborted: false, reason })
+const complete = ($: Engine, turnId: string, agentId?: string, reason: 'answer' | 'error' = 'answer', answer = '') =>
+  $.turn.complete({ turnId, agentId, answer, durationMs: 1, isAborted: false, reason })
 
 const start = ($: Engine) => $.session.start({ cwd: '.', surface: 'terminal', isInteractive: true })
 
@@ -241,6 +248,34 @@ describe('aside', () => {
     const asked = await step($, 't1')
     expect(asked.text).toBe('Could not ask haiku: No agents here')
     expect(requests).toEqual([])
+  })
+
+  test('with nothing drawing the session, the question turn waits and carries the answer', async ($, on) => {
+    const { requests, spawned } = engine(on, { isDrawn: false })
+    await submit($, '$haiku:low what is 6 times 7?')
+    await step($, 's1', 0, 'a1')
+    const asked = step($, 't1')
+    await complete($, 's1', 'a1', 'answer', '42')
+    expect((await asked).text).toBe('haiku · low:\n\n42')
+    await complete($, 't1')
+    await submit($, handback(String(spawned[0]?.name), '42'), { isMeta: true, peer: true })
+    expect((await step($, 't2')).text).toBe(SHOWN)
+    expect(requests.map(r => r.turnId)).toEqual(['s1'])
+  })
+
+  test('with nothing drawing the session, a slow answer comes in the later turn', async ($, on) => {
+    const clock = mock.clock(on)
+    const { requests, spawned } = engine(on, { isDrawn: false })
+    await submit($, '$sonnet what is 6 times 7?')
+    await step($, 's1', 0, 'a1')
+    const asked = step($, 't1')
+    await clock.advance(10_000)
+    expect((await asked).text).toMatch(/^Asked sonnet on the side\. Its answer comes back in a later turn/)
+    await complete($, 't1')
+    await complete($, 's1', 'a1', 'answer', '42')
+    await submit($, handback(String(spawned[0]?.name), '42'), { isMeta: true, peer: true })
+    expect((await step($, 't2')).text).toBe('sonnet:\n\n42')
+    expect(requests.map(r => r.turnId)).toEqual(['s1'])
   })
 })
 

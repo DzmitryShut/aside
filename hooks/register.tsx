@@ -70,6 +70,11 @@ export const isReport = (text: string) => isHandback(text) || NOTICE.test(text)
 export const sent = (ask: Ask) => `Asked ${label(ask)} on the side.`
 export const SHOWN = '(the side answer above was shown to the user)'
 
+// The same turns where nothing draws the session (a -p run, an SDK host): the
+// answer itself, or word that it comes later.
+export const answered = (spec: Spec, answer: string) => `${label(spec)}:\n\n${answer}`
+export const later = (ask: Ask) => `Asked ${label(ask)} on the side. Its answer comes back in a later turn.`
+
 // Read beside a question or an answer that lands in a turn the main model is
 // running, so it leaves both alone.
 export const ASKED = (ask: Ask) =>
@@ -80,17 +85,20 @@ export const ANSWERED =
 type Message = { role: string; content: readonly { type: string; text?: unknown }[] }
 
 // What started a main-loop turn, from the messages since the model last
-// spoke (a request's, where reminders ride as text blocks of their own): the
-// text that answers it here, or undefined when the turn is the model's.
-export function opener(messages: readonly Message[], refused: ReadonlyMap<string, string>) {
+// spoke (a request's, where reminders ride as text blocks of their own): a
+// question with its prompt, a report with its subagent's name (none for a
+// notice), or undefined when the turn is the model's.
+export type Opener = { ask: Ask; prompt: string } | { from: string | undefined }
+
+export function opener(messages: readonly Message[]): Opener | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i]
     if (message?.role !== 'user') break
     for (const block of message.content) {
       if (block.type !== 'text' || typeof block.text !== 'string') continue
       const ask = parse(block.text)
-      if (ask) return refused.has(block.text) ? `Could not ask ${label(ask)}: ${refused.get(block.text)}` : sent(ask)
-      if (isReport(block.text)) return SHOWN
+      if (ask) return { ask, prompt: block.text }
+      if (isReport(block.text)) return { from: isHandback(block.text) ? HANDBACK.exec(block.text)?.[1] : undefined }
     }
   }
   return undefined
@@ -121,18 +129,25 @@ export const register: Register = on => {
   // A question or one of its answers was submitted: the next main-loop turn
   // may be one to answer here.
   let isPending = false
-  // Why a question's subagent did not start, by the prompt.
+  // By the question's prompt: its subagent's name, or why it did not start.
+  const names = new Map<string, string>()
   const refused = new Map<string, string>()
   // Main-loop turns answered here, by id, with their text.
   const quiet = new Map<string, string>()
-  // Each subagent seen stepping: its spec, or null when it is not ours.
-  const specs = new Map<string, Spec | null>()
+  // Each subagent seen stepping, by id: its name, or null when it is not ours.
+  const agents = new Map<string, string | null>()
+  // Where nothing draws the session, by subagent name: the answers in, the
+  // question turns waiting on one (for their text), and the answers a turn's
+  // text has carried.
+  const answers = new Map<string, string>()
+  const waiting = new Map<string, (text: string) => void>()
+  const carried = new Set<string>()
 
   // The type stays offered: Claude Code resumes only a type it offers, and a
   // follow-up the person sends a finished aside from /tasks is a resume.
   on('session.start', async ($, e, next) => {
-    const names = new Set((await $.tool.list()).map(tool => tool.name))
-    if (TOOLS.every(tool => names.has(tool))) {
+    const tools = new Set((await $.tool.list()).map(tool => tool.name))
+    if (TOOLS.every(tool => tools.has(tool))) {
       const { agent } = await $.agent.register({
         name: 'ask',
         description: "The aside mod's agent for the user's `$model` side questions. Not for your own tasks.",
@@ -155,13 +170,15 @@ export const register: Register = on => {
     }
     const ask = parse(e.text)
     if (!ask) return next(e)
+    const name = nameOf(ask, Math.random().toString(36).slice(2, 6))
     const spawned = await $.agent.spawn({
       prompt: agentType === 'Explore' ? `${BRIEF}\n\n${ask.question}` : ask.question,
       description: `aside: ${ask.question.slice(0, 40)}`,
       subagentType: agentType,
-      name: nameOf(ask, Math.random().toString(36).slice(2, 6)),
+      name,
     })
-    if (spawned.deny !== undefined) refused.set(e.text, reason(spawned.deny))
+    if (spawned.deny === undefined) names.set(e.text, name)
+    else refused.set(e.text, reason(spawned.deny))
     isPending = true
     return next(e.turnId === undefined ? e : { ...e, context: [...(e.context ?? []), ASKED(ask)] })
   }).catch(($, e, next) => next(e))
@@ -175,11 +192,11 @@ export const register: Register = on => {
 
   on('turn.step', async function* ($, e, next) {
     if (e.agentId !== undefined) {
-      if (!specs.has(e.agentId)) {
+      if (!agents.has(e.agentId)) {
         const name = (await $.agent.list()).find(agent => agent.id === e.agentId)?.name
-        specs.set(e.agentId, (name && specOf(name)) || null)
+        agents.set(e.agentId, name && specOf(name) ? name : null)
       }
-      const effort = specs.get(e.agentId)?.effort
+      const effort = specOf(agents.get(e.agentId) ?? '')?.effort
       return yield* next(effort ? { ...e, effort } : e)
     }
     let text = quiet.get(e.turnId)
@@ -187,7 +204,36 @@ export const register: Register = on => {
       isPending = false
       // The API form: the rows' form leaves out a hidden row such as the
       // hand-back.
-      text = opener(await $.session.messages({ as: 'api' }), refused)
+      const found = opener(await $.session.messages({ as: 'api' }))
+      const isDrawn = found !== undefined && (await $.session.surfaces()).length > 0
+      if (found && 'ask' in found) {
+        const { ask, prompt } = found
+        const name = names.get(prompt)
+        const ready = name === undefined ? undefined : answers.get(name)
+        if (refused.has(prompt)) text = `Could not ask ${label(ask)}: ${refused.get(prompt)}`
+        else if (isDrawn || name === undefined) text = sent(ask)
+        else if (ready !== undefined) {
+          carried.add(name)
+          text = answered(ask, ready)
+        } else {
+          // Nothing will draw the hand-back: wait for the answer here while
+          // this hook's budget lasts.
+          text = await new Promise<string>(resolve => {
+            const timer = $.clock.after(Math.max(0, next.budget.remainingMs - 2000), () => resolve(later(ask)))
+            waiting.set(name, line => {
+              timer.cancel()
+              resolve(line)
+            })
+          })
+          waiting.delete(name)
+        }
+      } else if (found) {
+        const spec = specOf(found.from ?? '')
+        const answer = found.from === undefined ? undefined : answers.get(found.from)
+        const isCarried = found.from !== undefined && carried.delete(found.from)
+        if (found.from !== undefined) answers.delete(found.from)
+        text = !isDrawn && spec && answer !== undefined && !isCarried ? answered(spec, answer) : SHOWN
+      }
       if (text !== undefined) quiet.set(e.turnId, text)
     }
     if (text === undefined) return yield* next(e)
@@ -199,10 +245,18 @@ export const register: Register = on => {
   on('turn.complete', ($, e, next) => {
     if (e.agentId === undefined) quiet.delete(e.turnId)
     else {
-      // No hand-back follows a run that ended without an answer.
-      const spec = specs.get(e.agentId)
-      specs.delete(e.agentId)
-      if (spec && e.reason !== 'answer') $.ui.log(`${label(spec)} did not answer: ${ENDED[e.reason]}`)
+      const name = agents.get(e.agentId)
+      agents.delete(e.agentId)
+      const spec = specOf(name ?? '')
+      if (name && spec) {
+        // No hand-back follows a run that ended without an answer.
+        const line = e.reason === 'answer' ? answered(spec, e.answer) : `${label(spec)} did not answer: ${ENDED[e.reason]}`
+        if (e.reason === 'answer') answers.set(name, e.answer)
+        else $.ui.log(line)
+        const resolve = waiting.get(name)
+        if (resolve && e.reason === 'answer') carried.add(name)
+        resolve?.(line)
+      }
     }
     return next(e)
   })
