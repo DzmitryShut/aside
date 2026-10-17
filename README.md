@@ -49,6 +49,8 @@ Your question stays in the transcript and the answer shows up under it:
 
 The session's model reads the answer too, so a later prompt can build on it: "what did haiku say, in five words?" works. The subagent runs in the background, so you can keep typing; `/tasks` lists it while it works. For a follow-up, open a finished aside in `/tasks` and send it a message: the same subagent answers with what it already knows, and the answer shows up in your chat the same way.
 
+Under `claude -p` nothing draws the session, so the reply carries the answer: `claude -p '$haiku what is 7 times 7?'` prints `haiku:` and `49`.
+
 A spec with no model, like `$low go`, is left to [once](https://github.com/DzmitryShut/once), which sets the effort for one prompt. Anything else goes through as typed, so `$HOME is wrong` and `costs $5` are safe.
 
 ## Why not switch the model?
