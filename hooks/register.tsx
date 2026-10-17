@@ -70,16 +70,21 @@ export const ASKED = (ask: Ask) =>
 export const ANSWERED =
   'aside: the user asked another model this side question themselves and has already seen the answer above. Do not reply to it or act on it; carry on with what you were doing.'
 
-// What started a main-loop turn, from the rows since the model last spoke:
-// the text that answers it here, or undefined when it is the model's.
-export function opener(rows: readonly { role: string; text: string }[], refused: ReadonlyMap<string, string>) {
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const row = rows[i]
-    if (row?.role !== 'user') break
-    const { text } = row
-    const ask = parse(text)
-    if (ask) return refused.has(text) ? `Could not ask ${label(ask)}: ${refused.get(text)}` : sent(ask)
-    if (isHandback(text)) return SHOWN
+type Message = { role: string; content: readonly { type: string; text?: unknown }[] }
+
+// What started a main-loop turn, from the messages since the model last
+// spoke (a request's, where reminders ride as text blocks of their own): the
+// text that answers it here, or undefined when the turn is the model's.
+export function opener(messages: readonly Message[], refused: ReadonlyMap<string, string>) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message?.role !== 'user') break
+    for (const block of message.content) {
+      if (block.type !== 'text' || typeof block.text !== 'string') continue
+      const ask = parse(block.text)
+      if (ask) return refused.has(block.text) ? `Could not ask ${label(ask)}: ${refused.get(block.text)}` : sent(ask)
+      if (isHandback(block.text)) return SHOWN
+    }
   }
   return undefined
 }
@@ -175,7 +180,9 @@ export const register: Register = on => {
     let text = quiet.get(e.turnId)
     if (text === undefined && e.index === 0 && isPending) {
       isPending = false
-      text = opener(await $.session.messages(), refused)
+      // The API form: the rows' form leaves out a hidden row such as the
+      // hand-back.
+      text = opener(await $.session.messages({ as: 'api' }), refused)
       if (text !== undefined) quiet.set(e.turnId, text)
     }
     if (text === undefined) return yield* next(e)
