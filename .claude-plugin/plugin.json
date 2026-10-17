@@ -1,10 +1,10 @@
 {
   "name": "aside",
   "version": "0.1.0",
-  "description": "Ask another model on the side without leaving your Claude Code session: `$haiku what does git reset --soft do?`. A subagent with a fresh context answers, and the answer lands in your chat.",
+  "description": "Ask another model a quick question without leaving your Claude Code session: `$haiku what does git reset --soft do?`. A read-only subagent with a fresh context answers in your chat, and your session's model, effort and prompt cache stay as they were.",
   "author": { "name": "DzmitryShut" },
   "homepage": "https://github.com/DzmitryShut/aside",
   "repository": "https://github.com/DzmitryShut/aside",
   "license": "MIT",
-  "keywords": ["model", "subagent", "haiku", "claude-code-mod"]
+  "keywords": ["model", "subagent", "haiku", "question", "claude-code-mod"]
 }
