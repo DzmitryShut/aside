@@ -58,6 +58,13 @@ const HANDBACK = /(?:^|\n)<agent-message from="(aside-[^"]+)">\n\[Subagent hand-
 
 export const isHandback = (text: string) => specOf(HANDBACK.exec(text)?.[1] ?? '') !== undefined
 
+// The engine's notice that an aside's task stopped (its description starts
+// `aside: `), which follows a follow-up the person sent it from /tasks.
+const NOTICE = /^<task-notification>[\s\S]*?<summary>Agent "aside: /
+
+// A hidden row the subagent's run sends the main session.
+export const isReport = (text: string) => isHandback(text) || NOTICE.test(text)
+
 // What the main model reads for the turns answered here. The first is shown
 // as is; the second sits under the drawn answer and is not drawn.
 export const sent = (ask: Ask) => `Asked ${label(ask)} on the side.`
@@ -83,7 +90,7 @@ export function opener(messages: readonly Message[], refused: ReadonlyMap<string
       if (block.type !== 'text' || typeof block.text !== 'string') continue
       const ask = parse(block.text)
       if (ask) return refused.has(block.text) ? `Could not ask ${label(ask)}: ${refused.get(block.text)}` : sent(ask)
-      if (isHandback(block.text)) return SHOWN
+      if (isReport(block.text)) return SHOWN
     }
   }
   return undefined
@@ -121,12 +128,14 @@ export const register: Register = on => {
   // Each subagent seen stepping: its spec, or null when it is not ours.
   const specs = new Map<string, Spec | null>()
 
+  // The type stays offered: Claude Code resumes only a type it offers, and a
+  // follow-up the person sends a finished aside from /tasks is a resume.
   on('session.start', async ($, e, next) => {
     const names = new Set((await $.tool.list()).map(tool => tool.name))
     if (TOOLS.every(tool => names.has(tool))) {
       const { agent } = await $.agent.register({
         name: 'ask',
-        description: 'Answers a side question for the aside mod.',
+        description: "The aside mod's agent for the user's `$model` side questions. Not for your own tasks.",
         prompt: SYSTEM,
         tools: TOOLS,
         omitClaudeMd: true,
@@ -136,17 +145,13 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // The type is the mod's own; the main model never sees it listed.
-  on('agent.offer', { agent: 'aside:ask' }, () => ({ isOffered: false })).catch(($, e, next) =>
-    next.called ? next(e) : { isOffered: false },
-  )
-
   on('prompt.submit', async ($, e, next) => {
     if (e.command) return next(e)
     if (e.isMeta) {
-      if (!isHandback(e.text)) return next(e)
+      if (!isReport(e.text)) return next(e)
       isPending = true
-      return next(e.turnId === undefined ? e : { ...e, context: [...(e.context ?? []), ANSWERED] })
+      const isLanding = e.turnId !== undefined && isHandback(e.text)
+      return next(isLanding ? { ...e, context: [...(e.context ?? []), ANSWERED] } : e)
     }
     const ask = parse(e.text)
     if (!ask) return next(e)

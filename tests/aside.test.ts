@@ -115,9 +115,23 @@ describe('aside', () => {
     expect(spawned[0]).toMatchObject({ subagent_type: 'aside:ask', model: 'claude-haiku-5-5', prompt: 'where is the config parsed?' })
   })
 
-  test('its type is hidden from the main model', async $ => {
+  test('its type stays offered, so a follow-up from /tasks can resume it', async ($, on) => {
+    on('agent.offer', () => ({ isOffered: true }))
     const offered = await $.agent.offer({ agent: 'aside:ask', description: '', source: 'plugin', provider: { plugin: 'aside', tier: 'user' } })
-    expect(offered).toEqual({ isOffered: false })
+    expect(offered).toEqual({ isOffered: true })
+  })
+
+  test("the notice that a resumed aside stopped is answered here; another task's is the model's", async ($, on) => {
+    const { requests } = engine(on)
+    const notice = (description: string) =>
+      `<task-notification>\n<task-id>ab75ecbabe004238f</task-id>\n<status>completed</status>\n<summary>Agent "${description}" finished</summary>\n</task-notification>`
+    await submit($, notice('aside: what is 2 plus 2?'), { isMeta: true })
+    const ours = await step($, 't1')
+    await complete($, 't1')
+    expect(ours.text).toBe(SHOWN)
+    await submit($, notice('Find parse function definition'), { isMeta: true })
+    await step($, 't2')
+    expect(requests.map(r => r.turnId)).toEqual(['t2'])
   })
 
   test('the question turn and the answer turn are answered without a model request', async ($, on) => {
