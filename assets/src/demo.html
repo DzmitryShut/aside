@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- README image 1600x900. Render:
+     node render-card.mjs assets/src/demo.html assets/demo.png --size 1600x900 -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0d1017; --panel: #141922; --line: #262c36;
+    --text: #e6edf3; --muted: #8b949e; --accent: #f5b942; --ok: #7ee2a8; --prompt: #8a9bff;
+    --mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 900px; background: var(--bg); color: var(--text); font-family: var(--mono); overflow: hidden; }
+  main { padding: 64px 90px; height: 100%; display: flex; flex-direction: column; gap: 44px; }
+  header { display: flex; align-items: baseline; gap: 36px; }
+  h1 { font-size: 64px; font-weight: 700; }
+  .tagline { font-size: 32px; color: var(--muted); }
+  .window { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 50px 40px; display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 12px; font-size: 24px; color: var(--muted); margin: 0 0 30px -24px; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; }
+  .bar .dot:nth-child(1) { background: #ff5f57; } .bar .dot:nth-child(2) { background: #febc2e; } .bar .dot:nth-child(3) { background: #28c840; }
+  .bar span:last-child { margin-left: 22px; }
+  .row { font-size: 32px; white-space: pre; margin-top: 28px; }
+  .row::before { content: "> "; color: var(--prompt); }
+  .k { color: var(--accent); }
+  .c { color: var(--ok); font-size: 26px; padding-left: 26px; margin-top: 12px; }
+  .a { font-size: 26px; padding-left: 26px; margin-top: 8px; }
+  .m { color: var(--muted); font-size: 26px; padding-left: 26px; margin-top: 12px; }
+  .install { margin-top: auto; font-size: 26px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>aside</h1>
+    <div class="tagline">another model, on the side</div>
+  </header>
+  <section class="window">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>claude · opus · xhigh</span></div>
+    <div class="row"><span class="k">$haiku</span> what does git reset --soft do?</div>
+    <div class="m">Asked haiku on the side. The answer will show up here.</div>
+    <div class="c">haiku › what does git reset --soft do?</div>
+    <div class="a">Moves the branch to that commit and keeps your changes staged.</div>
+    <div class="row">squash the last three commits</div>
+    <div class="m">opus · xhigh, same prompt cache, haiku's answer in context</div>
+    <div class="install">/plugin install aside --marketplace DzmitryShut/aside</div>
+  </section>
+</main>
+</body>
+</html>
