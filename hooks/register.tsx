@@ -166,7 +166,7 @@ export const register: Register = on => {
   on('agent.spawn', ($, e, next) => {
     const spec = e.name ? specOf(e.name) : undefined
     return next(spec ? { ...e, model: spec.model } : e)
-  })
+  }).catch(($, e, next) => (next.called || !specOf(e.name ?? '') ? next(e) : { deny: 'aside could not set its model' }))
 
   on('turn.step', async function* ($, e, next) {
     if (e.agentId !== undefined) {
