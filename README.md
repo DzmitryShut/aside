@@ -47,7 +47,7 @@ Your question stays in the transcript and the answer shows up under it:
   or combine recent commits without losing any work.
 ```
 
-The session's model reads the answer too, so a later prompt can build on it: "what did haiku say, in five words?" works. The subagent runs in the background, so you can keep typing; `/tasks` lists it while it works. For a follow-up, open a finished aside in `/tasks` and send it a message: the same subagent answers with what it already knows, and the answer shows up in your chat the same way.
+The session's model reads the answer too, so a later prompt can build on it: "what did haiku say, in five words?" works. The subagent runs in the background, so you can keep typing; `/tasks` lists it while it works. While Claude Code still lists a finished aside in `/tasks` (it drops finished tasks on its own, sometimes within seconds), you can open it and send a follow-up: the same subagent answers with what it already knows, and the answer shows up in your chat the same way.
 
 Under `claude -p` nothing draws the session, so the reply carries the answer: `claude -p '$haiku what is 7 times 7?'` prints `haiku:` and `49`.
 
