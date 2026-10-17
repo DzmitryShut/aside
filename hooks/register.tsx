@@ -132,6 +132,9 @@ export const register: Register = on => {
   // By the question's prompt: its subagent's name, or why it did not start.
   const names = new Map<string, string>()
   const refused = new Map<string, string>()
+  // Subagents whose spawn has not answered yet. A spawn that runs in the
+  // foreground answers with the run's end, a failure as its refusal.
+  const spawning = new Set<string>()
   // Main-loop turns answered here, by id, with their text.
   const quiet = new Map<string, string>()
   // Each subagent seen stepping, by id: its name, or null when it is not ours.
@@ -171,12 +174,13 @@ export const register: Register = on => {
     const ask = parse(e.text)
     if (!ask) return next(e)
     const name = nameOf(ask, Math.random().toString(36).slice(2, 6))
+    spawning.add(name)
     const spawned = await $.agent.spawn({
       prompt: agentType === 'Explore' ? `${BRIEF}\n\n${ask.question}` : ask.question,
       description: `aside: ${ask.question.slice(0, 40)}`,
       subagentType: agentType,
       name,
-    })
+    }).finally(() => spawning.delete(name))
     if (spawned.deny === undefined) names.set(e.text, name)
     else refused.set(e.text, reason(spawned.deny))
     isPending = true
@@ -249,10 +253,11 @@ export const register: Register = on => {
       agents.delete(e.agentId)
       const spec = specOf(name ?? '')
       if (name && spec) {
-        // No hand-back follows a run that ended without an answer.
+        // No hand-back follows a run that ended without an answer; while its
+        // spawn is still out, the question turn tells of it instead.
         const line = e.reason === 'answer' ? answered(spec, e.answer) : `${label(spec)} did not answer: ${ENDED[e.reason]}`
         if (e.reason === 'answer') answers.set(name, e.answer)
-        else $.ui.log(line)
+        else if (!spawning.has(name)) $.ui.log(line)
         const resolve = waiting.get(name)
         if (resolve && e.reason === 'answer') carried.add(name)
         resolve?.(line)

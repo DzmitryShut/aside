@@ -20,7 +20,10 @@ const handback = (from: string, report: string) =>
 // `$.session.messages({ as: 'api' })` answers them). The agents listed are
 // the ones spawned, `a1` first, unless the test gives its own; the session
 // draws on the terminal unless the test says nothing draws it.
-function engine(on: On, options: { tools?: string[]; agents?: AgentInfo[]; spawn?: AgentSpawnResult; isDrawn?: boolean } = {}) {
+function engine(
+  on: On,
+  options: { tools?: string[]; agents?: AgentInfo[]; spawn?: AgentSpawnResult | Promise<AgentSpawnResult>; isDrawn?: boolean } = {},
+) {
   const entered: { text: string; context?: readonly string[] }[] = []
   const spawned: Record<string, unknown>[] = []
   const requests: { turnId: string; effort?: string | number; agentId?: string }[] = []
@@ -248,6 +251,24 @@ describe('aside', () => {
     const asked = await step($, 't1')
     expect(asked.text).toBe('Could not ask haiku: No agents here')
     expect(requests).toEqual([])
+  })
+
+  test('a spawn that runs in the foreground and fails is told once, in the question turn', async ($, on) => {
+    let refuse: (result: AgentSpawnResult) => void = () => {}
+    const spawn = new Promise<AgentSpawnResult>(resolve => (refuse = resolve))
+    const clock = mock.clock(on)
+    const { logs, spawned } = engine(on, { spawn })
+    const submitted = submit($, '$claude-nope-9 hi')
+    await clock.settle()
+    expect(spawned).toHaveLength(1)
+    // The run ends while its spawn is still out, as a foreground spawn's does.
+    await step($, 's1', 0, 'a1')
+    await complete($, 's1', 'a1', 'error')
+    refuse({ deny: 'Agent terminated early due to an API error: model not found' })
+    await submitted
+    const asked = await step($, 't1')
+    expect(asked.text).toBe('Could not ask claude-nope-9: Agent terminated early due to an API error: model not found')
+    expect(logs).toEqual([])
   })
 
   test('with nothing drawing the session, the question turn waits and carries the answer', async ($, on) => {
