@@ -1,0 +1,13 @@
+{
+  "name": "aside",
+  "description": "Ask another model a side question without leaving your Claude Code session.",
+  "owner": {
+    "name": "DzmitryShut"
+  },
+  "plugins": [
+    {
+      "name": "aside",
+      "source": "./"
+    }
+  ]
+}
