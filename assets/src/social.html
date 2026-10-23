@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Social preview 1280x640 for GitHub Settings. Render:
+     node render-card.mjs assets/src/social.html assets/social.png --size 1280x640 -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0d1017; --panel: #141922; --line: #262c36;
+    --text: #e6edf3; --muted: #8b949e; --accent: #f5b942; --ok: #7ee2a8; --prompt: #8a9bff;
+    --mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 640px; background: var(--bg); color: var(--text); font-family: var(--mono); overflow: hidden; }
+  main { padding: 64px 80px; height: 100%; display: flex; flex-direction: column; gap: 40px; }
+  header { display: flex; align-items: baseline; gap: 28px; }
+  h1 { font-size: 88px; font-weight: 700; letter-spacing: -2px; }
+  .tagline { font-size: 30px; color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 36px 44px; display: flex; flex-direction: column; gap: 22px; }
+  .row { font-size: 30px; white-space: pre; }
+  .row::before { content: "> "; color: var(--prompt); }
+  .k { color: var(--accent); }
+  .c { color: var(--ok); font-size: 24px; padding-left: 36px; margin-top: -14px; }
+  footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 22px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>aside</h1>
+    <div class="tagline">another model, on the side</div>
+  </header>
+  <section class="panel">
+    <div class="row"><span class="k">$haiku</span> what does git reset --soft do?</div>
+    <div class="c">a subagent on haiku answers, with a fresh context</div>
+    <div class="row"><span class="k">$opus:max</span> second opinion on this lock order</div>
+    <div class="c">your session keeps its model, effort and prompt cache</div>
+  </section>
+  <footer>
+    <span>/plugin install aside --marketplace DzmitryShut/aside</span>
+    <span>Claude Code mod</span>
+  </footer>
+</main>
+</body>
+</html>
