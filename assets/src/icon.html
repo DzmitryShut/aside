@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- Plugin icon 512x512 (assets/icon.png). Render:
+     node render-card.mjs assets/src/icon.html assets/icon.png --size 512x512 -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0d1017; --panel: #141922; --line: #262c36;
+    --text: #e6edf3; --muted: #8b949e; --accent: #f5b942; --ok: #7ee2a8;
+    --mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 512px; height: 512px; background: var(--bg); font-family: var(--mono); overflow: hidden; }
+  main { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .mark { display: flex; align-items: center; gap: 20px; font-weight: 700; line-height: 1.1; }
+  .mark .d { font-size: 250px; color: var(--accent); }
+  .mark .c { font-size: 190px; color: var(--ok); padding-right: 12px; }
+  .name { font-size: 64px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark"><span class="d">$</span><span class="c">&gt;</span></div>
+  <div class="name">aside</div>
+</main>
+</body>
+</html>

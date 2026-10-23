@@ -17,7 +17,7 @@ aside is a Claude Code mod: `$haiku <question>` sends the question to a read-onl
 - Keep `aside:ask` offered: Claude Code resumes only an offered type, and a follow-up from `/tasks` is a resume.
 - Bump `version` in `.claude-plugin/plugin.json` for every release, or installed copies will not update.
 - Keep the plugin name `aside`: a renamed plugin is a new plugin for every install.
-- `assets/social.png` is rendered from `assets/src/social.html` (1280x640, under 1 MB). `assets/demo.png` has no source in the repo.
+- `assets/social.png` (1280x640, under 1 MB) and `assets/icon.png` (512x512, the plugin icon `claude plugin validate --strict` looks for) are rendered from `assets/src/*.html`. `assets/demo.png` has no source in the repo.
 
 ## Pitfalls from live runs
 
