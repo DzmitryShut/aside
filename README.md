@@ -26,6 +26,8 @@ $sonnet:max is this regex safe?                a second opinion that thinks hard
 
 Answer `y` to add the marketplace, then pick a scope. From a shell: `claude plugin install aside --marketplace DzmitryShut/aside`. In the desktop app: **+** next to the prompt, **Plugins**, **Add marketplace**.
 
+Requirements: Claude Code 2.1.302 or later (the version it was built and tested on), and access to the models you ask.
+
 ## Use
 
 Start a prompt with `$`, a model and, if you like, an effort:
@@ -72,24 +74,36 @@ One thing still reaches the session's model: Claude Code's prompt suggestion, th
 
 Claude Code's own `/btw` asks the session's model over the session's conversation, in one reply with no tools; a question that needs a file read gets "ask in the main conversation". aside asks the model you pick, without the conversation, and the subagent can read and search the repo.
 
+## What it touches
+
+- Hooks: `session.start`, `prompt.submit`, `agent.spawn`, `turn.step`, `turn.complete`, and `ui.render` for the hand-back row and one placeholder reply. Calls: `$.agent.register`, `$.agent.spawn`, `$.agent.list`, `$.session.messages`, `$.session.surfaces`, `$.tool.list`, `$.clock.after`, `$.ui.log`, `$.ui.resolve`.
+- Reads prompts that start with `$` and a model, and the request's messages at the first step of a turn that may be its own. Changes only its own turns, which it answers with fixed text instead of a model request, and its own subagents' model and effort. It registers the agent type `aside:ask` for the session. Your settings and files stay as they are.
+- Each question runs a subagent on the model you name, on your plan's usage or your API key like any other subagent. It can read and search files in the session's folder (Read, Glob, Grep) and cannot edit them or run commands; on a build without Glob or Grep, the read-only Explore agent stands in.
+- The answer stays in the session as a hidden message the session's model reads in later prompts, with two short placeholder replies around it.
+- No network or disk of its own: the subagent's requests go through Claude Code, and the only record is the session transcript Claude Code keeps.
+
 ## How it works
 
-- The prompt goes in as typed. aside answers the turn it starts with "Asked haiku on the side." and no model request.
-- The subagent is `aside:ask`: Read, Glob and Grep, no CLAUDE.md, and nothing of your conversation. On a build without Glob or Grep, the built-in Explore agent stands in. Its line in the main model's agent list says it is aside's and not for the model's own tasks. It stays listed because Claude Code resumes only a listed type, and a follow-up is a resume.
-- Each subagent is named after its spec (`aside-haiku-low-k3f9`). The name sets its model, and its effort on every request it makes.
-- The answer comes back as Claude Code's hand-back, a hidden message the session's model reads in later prompts. aside answers the turn it starts as well, draws the hand-back as the answer, and hides that turn's placeholder reply. ctrl+o shows the raw message.
-- An answer that lands while the session's model is busy with another prompt is read there, with a note to leave it alone. A question typed while the model works gets a note too: another model answers it, so the model does not.
-- A subagent that stops without an answer, say on a model id that does not exist, leaves a line in the transcript saying so.
+- The prompt goes in as typed, and aside answers the turn it starts with "Asked haiku on the side.", with no model request.
+- Each subagent is named after its spec (`aside-haiku-low-k3f9`), which sets its model and its effort on every request it makes.
+- The answer comes back as Claude Code's hand-back. aside answers the turn the hand-back starts too, draws the hand-back as the answer and hides that turn's placeholder reply; ctrl+o shows the raw message.
+- An answer that lands while the session's model is busy is read there, with a note to leave it alone. A question typed while the model works gets a note that another model answers it.
+- `aside:ask` stays in the main model's agent list, marked as aside's, because Claude Code resumes only a listed type and a follow-up from `/tasks` is a resume.
+- With nothing drawing the session (`claude -p`), the subagent runs in the foreground and the reply carries the answer. A subagent that stops without an answer leaves a line saying so.
+
+## Update and remove
+
+Third-party marketplaces do not update on their own: run `claude plugin update aside@aside`, or turn on auto-update for the marketplace in `/plugin` under **Marketplaces**. Remove it with `claude plugin uninstall aside@aside`.
 
 ## Develop
 
 ```
 claude --plugin-dir /path/to/aside
-claude plugin validate .
+claude plugin validate --strict .
 claude plugin test .
 ```
 
-All of it is [`hooks/register.tsx`](hooks/register.tsx).
+All of it is [`hooks/register.tsx`](hooks/register.tsx); the tests are [`tests/aside.test.ts`](tests/aside.test.ts).
 
 ## License
 
