@@ -26,7 +26,7 @@ $sonnet:max is this regex safe?                a second opinion that thinks hard
 
 Answer `y` to add the marketplace, then pick a scope. From a shell: `claude plugin install aside --marketplace DzmitryShut/aside`. In the desktop app: **+** next to the prompt, **Plugins**, **Add marketplace**.
 
-Requirements: Claude Code 2.1.302 or later (the version it was built and tested on), and access to the models you ask.
+Requirements: Claude Code 2.1.302 or later (built on 2.1.302, checked again on 2.1.309), and access to the models you ask.
 
 ## Use
 
